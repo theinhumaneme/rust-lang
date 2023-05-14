@@ -13,15 +13,18 @@ impl Rectangle {
     }
 }
 
+struct Quadrilateral {
+    width: u32,
+    height: u32,
+}
 impl Quadrilateral {
     fn square(size: u32) -> Self {
         return Self {
             width: size,
-            height: size,
+            height:size,
         };
     }
 }
-
 fn main() {
     let rect = Rectangle {
         width: 30,
@@ -33,6 +36,6 @@ fn main() {
         width: 20,
         height: 20,
     };
-    sq = Quadrilateral::square(3);
+    let sq = Quadrilateral::square(3);
     println!("{}", rect.can_hold(&other_rect))
 }
