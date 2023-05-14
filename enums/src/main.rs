@@ -4,7 +4,6 @@ enum IpAddrKind {
 }
 fn main() {
     println!("Hello, world!");
-    let mut = IpAddrKind::V4;
+    let mut hello = IpAddrKind::V4;
 }
-
 
