@@ -1,0 +1,3 @@
+Hello I am Kalyan, How are you, I am good, what about you?
+I am doing very well, I am currently using Lunar Vim as my primary editor, which is a preconfigured version of the most popular code editor, NeoVim
+How crazy is that? Don't you think so too? I am currently trying to build a GREP version of RUST, this is my second program that has a purpose apart from the regex program that i did in the Udemy Course. XD
