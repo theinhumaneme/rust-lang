@@ -1,42 +1,46 @@
+use crate::chunk_type::ChunkType;
+use crate::{Error, Result};
+use crc::{Crc, CRC_32_ISO_HDLC};
 use std::convert::TryFrom;
 use std::fmt;
 use std::io::{BufReader, Read};
 
-use crate::png::ChunkType;
-use crate::{Error, Result};
-
+const CRC: Crc<u32> = Crc::<u32>::new(&CRC_32_ISO_HDLC);
 /// A validated PNG chunk. See the PNG Spec for more details
 /// http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html
-#[derive(Debug, Clone)]
 pub struct Chunk {
     // Write me!
+    length: u32,
+    chunk_type: ChunkType,
+    chunk_data: Vec<u8>,
+    crc: u32,
 }
 
 impl Chunk {
     /// The length of the data portion of this chunk.
     pub fn length(&self) -> u32 {
-        todo!()
+        return self.length;
     }
 
     /// The `ChunkType` of this chunk
     pub fn chunk_type(&self) -> &ChunkType {
-        todo!()
+        return &self.chunk_type;
     }
 
     /// The raw data contained in this chunk in bytes
     pub fn data(&self) -> &[u8] {
-        todo!()
+        return &[];
     }
 
     /// The CRC of this chunk
     pub fn crc(&self) -> u32 {
-        todo!()
+        return self.crc;
     }
 
     /// Returns the data stored in this chunk as a `String`. This function will return an error
     /// if the stored data is not valid UTF-8.
     pub fn data_as_string(&self) -> Result<String> {
-        todo!()
+        return Ok(String::from_utf8(self.chunk_data.clone()).unwrap());
     }
 
     /// Returns this chunk as a byte sequences described by the PNG spec.
@@ -46,7 +50,28 @@ impl Chunk {
     /// 3. The data itself *(`length` bytes)*
     /// 4. The CRC of the chunk type and data *(4 bytes)*
     pub fn as_bytes(&self) -> Vec<u8> {
-        todo!()
+        let mut chunk_as_bytes: Vec<u8> = vec![];
+        chunk_as_bytes.extend(self.length.to_be_bytes());
+        chunk_as_bytes.extend(self.chunk_type().bytes());
+        chunk_as_bytes.extend(&self.chunk_data);
+        chunk_as_bytes.extend(self.crc.to_be_bytes());
+        return chunk_as_bytes;
+    }
+    pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
+        let crc_bytes = Self::get_bytes_for_crc(&chunk_type, &data);
+        Chunk {
+            length: data.len() as u32,
+            crc: CRC.checksum(&crc_bytes),
+            chunk_type,
+            chunk_data: data,
+        }
+    }
+
+    fn get_bytes_for_crc(chunk_type: &ChunkType, data: &Vec<u8>) -> Vec<u8> {
+        let mut crc_bytes = vec![];
+        crc_bytes.extend(chunk_type.bytes());
+        crc_bytes.extend(data);
+        crc_bytes
     }
 }
 
@@ -54,7 +79,37 @@ impl TryFrom<&[u8]> for Chunk {
     type Error = Error;
 
     fn try_from(bytes: &[u8]) -> Result<Self> {
-        todo!()
+        let data_len = bytes.len();
+        let mut iter = bytes.iter().cloned();
+        let first4: [u8; 4] = iter
+            .by_ref()
+            .take(4)
+            .collect::<Vec<u8>>()
+            .as_slice()
+            .try_into()?;
+        let length = u32::from_be_bytes(first4);
+
+        let second4: Vec<u8> = iter.by_ref().take(4).collect();
+        let chunk_type =
+            ChunkType::try_from(TryInto::<[u8; 4]>::try_into(second4.as_slice()).unwrap())?;
+
+        let data_bytes: Vec<u8> = iter.by_ref().take(data_len - 12).collect();
+
+        let last_bytes: [u8; 4] = iter.take(4).collect::<Vec<u8>>().as_slice().try_into()?;
+        let crc = u32::from_be_bytes(last_bytes);
+
+        let correct_crc =
+            crc == CRC.checksum(Self::get_bytes_for_crc(&chunk_type, &data_bytes).as_slice());
+        if !correct_crc {
+            Err(Error::from("Invalid chunk"))
+        } else {
+            Ok(Chunk {
+                chunk_data: data_bytes,
+                length,
+                crc,
+                chunk_type,
+            })
+        }
     }
 }
 
